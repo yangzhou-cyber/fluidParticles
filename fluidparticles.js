@@ -338,7 +338,6 @@ var FluidParticles = (function () {
 
             particlesCreatedSoFar += particlesInBox;
         }
-        console.log(particlePositions)
         var gridCells = GRID_WIDTH * GRID_HEIGHT * GRID_DEPTH * this.gridCellDensity;
 
         //assuming x:y:z ratio of 2:1:1

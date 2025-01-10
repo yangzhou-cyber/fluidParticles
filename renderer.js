@@ -287,15 +287,16 @@ var Renderer = (function () {
     //projectionMatrix and viewMatrix are both expected to be Float32Array(16)
     Renderer.prototype.draw1 = function (simulator, projectionMatrix, viewMatrix){
         var projectionViewMatrix = Utilities.premultiplyMatrix(new Float32Array(16), viewMatrix, projectionMatrix);
-        console.log(projectionMatrix, viewMatrix, "zjl");
+
+
         wgl.framebufferTexture2D(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.COLOR_ATTACHMENT0, wgl.TEXTURE_2D, this.renderingTexture, 0);
         wgl.framebufferRenderbuffer(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.DEPTH_ATTACHMENT, wgl.RENDERBUFFER, this.renderingRenderbuffer);
-
         wgl.clear(
             wgl.createClearState().bindFramebuffer(null).clearColor(0, 0, 0, 0),
             wgl.COLOR_BUFFER_BIT | wgl.DEPTH_BUFFER_BIT);
+
         var state = wgl.createDrawState()
-            .bindFramebuffer(this.)
+            .bindFramebuffer(this.renderingFramebuffer)
             .viewport(0, 0, this.canvas.width, this.canvas.height)
             .useProgram(this.renderDepthProgram)
             .enable(wgl.DEPTH_TEST)
@@ -309,21 +310,19 @@ var Renderer = (function () {
             .uniformMatrix4fv('u_projectionViewMatrix', false, projectionViewMatrix)
             .uniformTexture('u_positionsTexture', 0, wgl.TEXTURE_2D, simulator.particlePositionTexture)
         wgl.drawArrays(state, wgl.POINTS, 0, this.particlesWidth * this.particlesHeight)
-        return
 
-        // wgl.clear(
-        //     wgl.createClearState().bindFramebuffer(this.renderingFramebuffer).clearColor(-99999.0, -99999.0, -99999.0, -99999.0),
-        //     wgl.COLOR_BUFFER_BIT | wgl.DEPTH_BUFFER_BIT);
+        wgl.clear(
+            wgl.createClearState().bindFramebuffer(this.renderingFramebuffer).clearColor(-99999.0, -99999.0, -99999.0, -99999.0),
+            wgl.COLOR_BUFFER_BIT | wgl.DEPTH_BUFFER_BIT);
 
-        // const quadVertexBuffer = wgl.createBuffer();
-        // wgl.bufferData(this.quadVertexBuffer, wgl.ARRAY_BUFFER, new Float32Array([-1.0, -1.0, -1.0, 1.0, 1.0, -1.0, 1.0, 1.0]), wgl.STATIC_DRAW);
-        // var testState = wgl.createDrawState()
-        //     .bindFramebuffer(null)
-        //     .viewport(0, 0, this.canvas.width, this.canvas.height)
-        //     .vertexAttribPointer(quadVertexBuffer,0,2,wgl.FLOAT,wgl.FALSE, 0,0)
-        //     .useProgram(this.testProgram)
-        //     .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.renderingTexture)
-        // wgl.drawArrays(testState, wgl.TRIANGLE_STRIP, 0, 4);
+
+        var testState = wgl.createDrawState()
+            .bindFramebuffer(null)
+            .viewport(0, 0, this.canvas.width, this.canvas.height)
+            .vertexAttribPointer(this.quadVertexBuffer,0,2,wgl.FLOAT,wgl.FALSE, 0,0)
+            .useProgram(this.testProgram)
+            .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.renderingTexture)
+        wgl.drawArrays(testState, wgl.TRIANGLE_STRIP, 0, 4);
 
     }
     Renderer.prototype.draw = function (simulator, projectionMatrix, viewMatrix) {
