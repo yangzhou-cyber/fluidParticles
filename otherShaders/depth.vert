@@ -9,9 +9,11 @@ uniform float pointSize;
 uniform float pointScale;
 uniform mat4 viewMatrix;
 varying vec3 eyeSpacePos;
+varying vec2 textcoord;
 
 void main () {
     vec3 spherePosition = texture2D(u_positionsTexture, a_textureCoordinates).rgb;
+    textcoord = a_textureCoordinates;
     eyeSpacePos = (viewMatrix * vec4(spherePosition, 1.0)).xyz;
     gl_PointSize = -pointScale * pointSize / eyeSpacePos.z;
     gl_Position = u_projectionViewMatrix * vec4(spherePosition, 1.0);

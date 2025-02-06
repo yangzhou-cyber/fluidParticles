@@ -67,6 +67,7 @@ var WrappedGL = (function () {
         'DEPTH_TEST',
         'DEPTH_WRITEMASK',
         'VERTEX_PROGRAM_POINT_SIZE',
+        'GL_PROGRAM_POINT_SIZE',
         'DITHER',
         'DONT_CARE',
         'DST_ALPHA',

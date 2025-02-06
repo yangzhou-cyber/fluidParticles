@@ -231,9 +231,24 @@ var Renderer = (function () {
                 fragmentShader: 'otherShaders/depth.frag',
                 attributeLocations: { 'a_textureCoordinates': 0}
             },
+            depthBlurProgram: {
+                vertexShader: 'otherShaders/depthBlur.vert',
+                fragmentShader: 'otherShaders/depthBlur.frag',
+                attributeLocations: { 'a_textureCoordinates': 0}
+            },
+            thicknessProgram:{
+                vertexShader: 'otherShaders/thickness.vert',
+                fragmentShader: 'otherShaders/thickness.frag',
+                attributeLocations: { 'a_textureCoordinates': 0}
+            },
             testProgram:{
                 vertexShader: 'otherShaders/textureTest.vert',
                 fragmentShader: 'otherShaders/textureTest.frag',
+                attributeLocations: { 'a_position': 0}
+            },
+            particlesRenderProgram:{
+                vertexShader: 'otherShaders/particlesRender.vert',
+                fragmentShader: 'otherShaders/particlesRender.frag',
                 attributeLocations: { 'a_position': 0}
             },
             fxaaProgram: {
@@ -254,6 +269,8 @@ var Renderer = (function () {
         wgl.renderbufferStorage(this.renderingRenderbuffer, wgl.RENDERBUFFER, wgl.DEPTH_COMPONENT16, this.canvas.width, this.canvas.height);
         wgl.rebuildTexture(this.renderingTexture, wgl.RGBA, wgl.FLOAT, this.canvas.width, this.canvas.height, null, wgl.CLAMP_TO_EDGE, wgl.CLAMP_TO_EDGE, wgl.LINEAR, wgl.LINEAR); //contains (normal.x, normal.y, speed, depth)
         wgl.rebuildTexture(this.thicknessColorTexture, wgl.RGBA, wgl.FLOAT, this.canvas.width, this.canvas.height, null, wgl.CLAMP_TO_EDGE, wgl.CLAMP_TO_EDGE, wgl.LINEAR, wgl.LINEAR);
+        wgl.rebuildTexture(this.depthColorTexture, wgl.RGBA, wgl.FLOAT, this.canvas.width, this.canvas.height, null, wgl.CLAMP_TO_EDGE, wgl.CLAMP_TO_EDGE, wgl.LINEAR, wgl.LINEAR);
+        wgl.rebuildTexture(this.depthTexture, wgl.RGBA, wgl.FLOAT, this.canvas.width, this.canvas.height, null, wgl.CLAMP_TO_EDGE, wgl.CLAMP_TO_EDGE, wgl.LINEAR, wgl.LINEAR);
         wgl.rebuildTexture(this.occlusionTexture, wgl.RGBA, wgl.UNSIGNED_BYTE, this.canvas.width, this.canvas.height, null, wgl.CLAMP_TO_EDGE, wgl.CLAMP_TO_EDGE, wgl.LINEAR, wgl.LINEAR);
 
         wgl.rebuildTexture(this.compositingTexture, wgl.RGBA, wgl.UNSIGNED_BYTE, this.canvas.width, this.canvas.height, null, wgl.CLAMP_TO_EDGE, wgl.CLAMP_TO_EDGE, wgl.LINEAR, wgl.LINEAR);
@@ -287,12 +304,12 @@ var Renderer = (function () {
     //projectionMatrix and viewMatrix are both expected to be Float32Array(16)
     Renderer.prototype.draw1 = function (simulator, projectionMatrix, viewMatrix){
         var projectionViewMatrix = Utilities.premultiplyMatrix(new Float32Array(16), viewMatrix, projectionMatrix);
+        var invProjectMatrix = Utilities.invertMatrix(new Float32Array(16), projectionMatrix);
 
-
-        wgl.framebufferTexture2D(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.COLOR_ATTACHMENT0, wgl.TEXTURE_2D, this.renderingTexture, 0);
+        wgl.framebufferTexture2D(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.COLOR_ATTACHMENT0, wgl.TEXTURE_2D, this.depthColorTexture, 0);
         wgl.framebufferRenderbuffer(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.DEPTH_ATTACHMENT, wgl.RENDERBUFFER, this.renderingRenderbuffer);
         wgl.clear(
-            wgl.createClearState().bindFramebuffer(null).clearColor(0, 0, 0, 0),
+            wgl.createClearState().bindFramebuffer(this.renderingFramebuffer).clearColor(0, 0, 0, 0),
             wgl.COLOR_BUFFER_BIT | wgl.DEPTH_BUFFER_BIT);
 
         var state = wgl.createDrawState()
@@ -300,7 +317,8 @@ var Renderer = (function () {
             .viewport(0, 0, this.canvas.width, this.canvas.height)
             .useProgram(this.renderDepthProgram)
             .enable(wgl.DEPTH_TEST)
-            .enable(wgl.BLEND)
+            .disable(wgl.BLEND)
+            .enable(wgl.GL_PROGRAM_POINT_SIZE)
             .enable(wgl.VERTEX_PROGRAM_POINT_SIZE)
             .vertexAttribPointer(this.particleVertexBuffer,this.renderProgram.getAttribLocation('a_textureCoordinates'), 2, wgl.FLOAT, wgl.FALSE, 0,0)
             .uniform1f("pointSize", this.pointSize)
@@ -311,17 +329,79 @@ var Renderer = (function () {
             .uniformTexture('u_positionsTexture', 0, wgl.TEXTURE_2D, simulator.particlePositionTexture)
         wgl.drawArrays(state, wgl.POINTS, 0, this.particlesWidth * this.particlesHeight)
 
+        wgl.framebufferTexture2D(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.COLOR_ATTACHMENT0, wgl.TEXTURE_2D, this.thicknessColorTexture, 0);
         wgl.clear(
-            wgl.createClearState().bindFramebuffer(this.renderingFramebuffer).clearColor(-99999.0, -99999.0, -99999.0, -99999.0),
-            wgl.COLOR_BUFFER_BIT | wgl.DEPTH_BUFFER_BIT);
+            wgl.createClearState().bindFramebuffer(this.renderingFramebuffer).clearColor(0, 0, 0, 0),
+            wgl.COLOR_BUFFER_BIT );
 
+
+        var thicknessState = wgl.createDrawState()
+            .bindFramebuffer(this.renderingFramebuffer)
+            .viewport(0, 0, this.canvas.width, this.canvas.height)
+            .useProgram(this.thicknessProgram)
+            .depthMask(wgl.FALSE)
+            .disable(wgl.DEPTH_TEST)
+            .enable(wgl.BLEND)
+            .blendEquation(wgl.FUNC_ADD)
+            .blendFunc(wgl.ONE, wgl.ONE)
+            .enable(wgl.GL_PROGRAM_POINT_SIZE)
+            .enable(wgl.VERTEX_PROGRAM_POINT_SIZE)
+            .vertexAttribPointer(this.particleVertexBuffer,this.renderProgram.getAttribLocation('a_textureCoordinates'), 2, wgl.FLOAT, wgl.FALSE, 0,0)
+            .uniform1f("pointSize", this.pointSize)
+            .uniform1f('pointScale',this.pointScale)
+            .uniformMatrix4fv('viewMatrix', false, viewMatrix)
+            .uniformMatrix4fv('projectMatrix', false, projectionMatrix)
+            .uniformMatrix4fv('u_projectionViewMatrix', false, projectionViewMatrix)
+            .uniformTexture('u_positionsTexture', 0, wgl.TEXTURE_2D, simulator.particlePositionTexture)
+        wgl.drawArrays(thicknessState, wgl.POINTS, 0, this.particlesWidth * this.particlesHeight)
+
+
+        wgl.framebufferTexture2D(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.COLOR_ATTACHMENT0, wgl.TEXTURE_2D, this.depthTexture, 0);
+        wgl.clear(
+            wgl.createClearState().bindFramebuffer(this.renderingFramebuffer).clearColor(0, 0, 0, 0),
+            wgl.COLOR_BUFFER_BIT );
+
+        var depthBlurState = wgl.createDrawState()
+            .bindFramebuffer(this.renderingFramebuffer)
+            .viewport(0, 0, this.canvas.width, this.canvas.height)
+            .depthMask(wgl.TRUE)
+            .enable(wgl.DEPTH_TEST)
+            .disable(wgl.BLEND)
+            .enable(wgl.GL_PROGRAM_POINT_SIZE)
+            .enable(wgl.VERTEX_PROGRAM_POINT_SIZE)
+            .useProgram(this.depthBlurProgram)
+            .vertexAttribPointer(this.quadVertexBuffer,0,2,wgl.FLOAT,wgl.FALSE, 0,0)
+            .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.depthColorTexture)
+            .uniform1f("filterRadius", 5)
+            .uniform2f("u_textureSize", this.canvas.width, this.canvas.height)
+        wgl.drawArrays(depthBlurState, wgl.TRIANGLE_STRIP, 0, 4);
+
+        wgl.clear(
+            wgl.createClearState().bindFramebuffer(null).clearColor(0, 0, 0, 0),
+            wgl.COLOR_BUFFER_BIT | wgl.DEPTH_BUFFER_BIT);
+        var renderState = wgl.createDrawState()
+            .bindFramebuffer(null)
+            .viewport(0, 0, this.canvas.width, this.canvas.height)
+            .useProgram(this.particlesRenderProgram)
+            .vertexAttribPointer(this.quadVertexBuffer,0,2,wgl.FLOAT,wgl.FALSE, 0,0)
+            .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.depthTexture)
+            .uniform2f("u_textureSize", this.canvas.width, this.canvas.height)
+            .uniformMatrix4fv("u_invProjectMatrix", false, invProjectMatrix)
+        wgl.drawArrays(renderState, wgl.TRIANGLE_STRIP, 0, 4);
+
+        return
+        //测试纹理
+        wgl.clear(
+            wgl.createClearState().bindFramebuffer(null).clearColor(0, 0, 0, 0),
+            wgl.COLOR_BUFFER_BIT | wgl.DEPTH_BUFFER_BIT);
 
         var testState = wgl.createDrawState()
             .bindFramebuffer(null)
             .viewport(0, 0, this.canvas.width, this.canvas.height)
-            .vertexAttribPointer(this.quadVertexBuffer,0,2,wgl.FLOAT,wgl.FALSE, 0,0)
             .useProgram(this.testProgram)
-            .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.renderingTexture)
+            .vertexAttribPointer(this.quadVertexBuffer,0,2,wgl.FLOAT,wgl.FALSE, 0,0)
+            .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.depthColorTexture)
+
         wgl.drawArrays(testState, wgl.TRIANGLE_STRIP, 0, 4);
 
     }
