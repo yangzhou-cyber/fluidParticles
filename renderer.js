@@ -305,6 +305,7 @@ var Renderer = (function () {
     Renderer.prototype.draw1 = function (simulator, projectionMatrix, viewMatrix){
         var projectionViewMatrix = Utilities.premultiplyMatrix(new Float32Array(16), viewMatrix, projectionMatrix);
         var invProjectMatrix = Utilities.invertMatrix(new Float32Array(16), projectionMatrix);
+        var invViewMatrix = Utilities.invertMatrix(new Float32Array(16), viewMatrix);
 
         wgl.framebufferTexture2D(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.COLOR_ATTACHMENT0, wgl.TEXTURE_2D, this.depthColorTexture, 0);
         wgl.framebufferRenderbuffer(this.renderingFramebuffer, wgl.FRAMEBUFFER, wgl.DEPTH_ATTACHMENT, wgl.RENDERBUFFER, this.renderingRenderbuffer);
@@ -384,9 +385,13 @@ var Renderer = (function () {
             .viewport(0, 0, this.canvas.width, this.canvas.height)
             .useProgram(this.particlesRenderProgram)
             .vertexAttribPointer(this.quadVertexBuffer,0,2,wgl.FLOAT,wgl.FALSE, 0,0)
-            .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.depthTexture)
+            .uniformTexture("u_texture", 0, wgl.TEXTURE_2D, this.depthColorTexture)
+            .uniformTexture("u_thickness", 0, wgl.TEXTURE_2D, this.thicknessColorTexture)
             .uniform2f("u_textureSize", this.canvas.width, this.canvas.height)
+            .uniform4f("u_liquidColor", 0,0,1,1)
             .uniformMatrix4fv("u_invProjectMatrix", false, invProjectMatrix)
+            .uniformMatrix4fv("u_invViewMatrix", false, invViewMatrix)
+            .uniformMatrix4fv("u_viewMatrix", false, viewMatrix)
         wgl.drawArrays(renderState, wgl.TRIANGLE_STRIP, 0, 4);
 
         return
