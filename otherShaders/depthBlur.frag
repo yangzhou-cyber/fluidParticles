@@ -16,8 +16,8 @@ void main(){
     float wsum = 0.0;
     float value = texture2D(u_texture, v_coordinates).r;
 
-    for(int y = -1; y <= 1; y += 1){
-        for(int x = -1; x <= 1; x += 1){
+    for(int y = -2; y <= 2; y += 1){
+        for(int x = -2; x <= 2; x += 1){
 
             float sampler = texture2D(u_texture, v_coordinates + vec2(x, y) * tex_offset).r;
 

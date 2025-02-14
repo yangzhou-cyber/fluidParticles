@@ -37,6 +37,9 @@ void main(){
     if(abs(ddyBottom.z) < abs(ddyTop.z))
     dy = ddyBottom;
     vec3 normal = normalize(cross(dx, dy));
+
+//    gl_FragColor = vec4(normal, 1);
+//    return;
     vec3 worldPos = (u_invViewMatrix * vec4(eyeSpacePos, 1.0)).xyz;
     vec2 texScale = vec2(0.75, 1.0);		// ???.
     float refractScale = 1.33 * 0.025;	// index.
@@ -51,8 +54,8 @@ void main(){
     vec3 viewDir = -normalize(eyeSpacePos);
     vec3 lightDir = normalize((u_viewMatrix * vec4(1.0,0.5,0.5,0)).xyz);
     vec3 halfVec = normalize(viewDir + lightDir);
-    vec3 specular = vec3(vec3(0.5,0.5,0.5) * pow(max(dot(halfVec, normal), 0.0), 400.0));
-    vec3 diffuse = u_liquidColor.xyz * max(dot(lightDir, normal), 0.0) * vec3(0.5,0.5,0.5) * u_liquidColor.w;
+    vec3 specular = vec3(vec3(0.6,0.6,0.6) * pow(max(dot(halfVec, normal), 0.0), 400.0));
+    vec3 diffuse = u_liquidColor.xyz * max(dot(lightDir, normal), 0.0) * vec3(0.6,0.6,0.6) * u_liquidColor.w;
 
     // -----------------Merge all effect----------------------------
     vec4 fragColor = vec4(diffuse + specular + refractedColor, 1);

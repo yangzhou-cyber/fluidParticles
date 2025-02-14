@@ -144,7 +144,7 @@ var Renderer = (function () {
 
     //you need to call reset() before drawing
     function Renderer (canvas, wgl, gridDimensions, onLoaded) {
-        this.pointSize = 0.2;
+        this.pointSize = 0.25;
         this.pointScale = 1 * 1920 / 2.0137 * (1 / Math.tan(Math.PI / 6));
 
         this.canvas = canvas;
